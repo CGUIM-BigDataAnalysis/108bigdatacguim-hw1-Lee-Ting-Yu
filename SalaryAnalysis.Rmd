@@ -1,7 +1,7 @@
 ---
 title: "108-2 大數據分析方法 作業一"
 output: github_document
-author: put your name here
+author: 李婷愉
 ---
 
 搞不清楚各行各業的薪資差異嗎? 念研究所到底對第一份工作的薪資影響有多大? CP值高嗎? 透過分析**初任人員平均經常性薪資**- （107年）https://data.gov.tw/dataset/6647 （104-105年）http://ipgod.nchc.org.tw/dataset/a17000000j-020066 ，可初步了解台灣近幾年各行各業、各學歷的起薪。
@@ -12,23 +12,47 @@ author: put your name here
 ```{r dataload}
 library(readr)
 library(dplyr)
-
+library(jsonlite)
+salary107 <- read_csv("C:/Users/a/Desktop/107salary.csv")
+knitr::kable(salary107)
+salary104 <- read_csv("http://ipgod.nchc.org.tw/dataset/b6f36b72-0c4a-4b60-9254-1904e180ddb1/resource/98d5094d-7481-44b5-876a-715a496f922c/download/a17000000j-020066-mah.csv")
+knitr::kable(salary104)
+salary104$大職業別<-NULL
+salary104$大職業別<-salary107$大職業別
+join_salary<-inner_join(salary107,salary104,by="大職業別")
+knitr::kable(join_salary)
+is.numeric(join_salary$`大學-薪資.x`)
+is.numeric(join_salary$`大學-薪資.y`)
+join_salary$`大學-薪資.x`<-gsub("—|…","",join_salary$`大學-薪資.x`)
+join_salary$`大學-薪資.y`<-gsub("—|…","",join_salary$`大學-薪資.y`)
+join_salary$`大學-薪資.x`<-as.numeric(join_salary$`大學-薪資.x`)
+join_salary$`大學-薪資.y`<-as.numeric(join_salary$`大學-薪資.y`)
 ```
 
 ### 107年度薪資較104年度薪資高的職業有哪些? 
 ```{r compare103106}
-#這是R Code Chunk
+salary_increase<-filter(join_salary,join_salary$`大學-薪資.x`>join_salary$`大學-薪資.y`)
+knitr::kable(salary_increase)
+join_salary$salary_increase_rate<-join_salary$`大學-薪資.x`/join_salary$`大學-薪資.y`
+salary_increase_top10<-head(join_salary[order(join_salary$salary_increase_rate,decreasing = T),],10)
+knitr::kable(salary_increase_top10)
 ```
+
+經過上網查詢與分析，第一個原因為勞動部每年調漲薪資，從104年每月基本工資20,008元、每小時基本工資120元，到107年每月基本工資為22,000元、每小時基本工資140元。第二個原因為有關人員之空缺數量減少，人員的缺少，導致廠商調升經常性薪資，或是因正職空缺減少，且增加打工和不是正職的缺額，造成原正職之薪資有所漲幅。第三個原因為台灣的公司越來越普遍採取以績效為準的變動薪資計畫，以增加獎金給付做為薪資總額，但也導致工時拉長，若是用工時與薪資做比較的話，其實薪資成長的幅度並不大。
 
 ### 提高超過5%的的職業有哪些? 
 ```{r over5}
-#這是R Code Chunk
+salary_increase_5percent<-filter(join_salary,salary_increase_rate>1.05)
+knitr::kable(salary_increase_5percent)
 ```
 
 ### 主要的職業種別是哪些種類呢?
 ```{r mainType}
-#這是R Code Chunk
+salary_increase_5percent_kind<-table(sapply(strsplit(salary_increase_5percent$大職業別,"-"),"[",1))
+knitr::kable(salary_increase_5percent_kind)
 ```
+
+主要有不動產業，出版、影音製作、傳播及資通訊服務業，金融及保險業，運輸及倉儲業，藝術_娛樂及休閒服務業，這五種職業種別出現頻率最高，都為5次。
 
 ## 男女同工不同酬現況分析
 
@@ -36,30 +60,74 @@ library(dplyr)
 
 ### 104和107年度的大學畢業薪資資料，哪些行業男生薪資比女生薪資多?
 ```{r male}
-#這是R Code Chunk
+is.numeric(salary104$`大學-女/男`)
+salary104$`大學-女/男`<-gsub("—|…","",salary104$`大學-女/男`)
+salary104$`大學-女/男`<-as.numeric(salary104$`大學-女/男`)
+is.numeric(salary107$`大學-女/男`)
+salary107$`大學-女/男`<-gsub("—|…","",salary107$`大學-女/男`)
+salary107$`大學-女/男`<-as.numeric(salary107$`大學-女/男`)
+boy_higher104<-filter(salary104,salary104$`大學-女/男`<100)
+boy_higher107<-filter(salary107,salary107$`大學-女/男`<100)
+knitr::kable(boy_higher104)
+knitr::kable(boy_higher107)
+boy_higher104_difference<-boy_higher104[order(boy_higher104$`大學-女/男`),]
+boy_higher107_difference<-boy_higher107[order(boy_higher107$`大學-女/男`),]
+boy_higher104_difference_top10<-head(boy_higher104_difference,10)
+boy_higher107_difference_top10<-head(boy_higher107_difference,10)
+knitr::kable(boy_higher104_difference_top10)
+knitr::kable(boy_higher107_difference_top10)
 ```
 ### 哪些行業女生薪資比男生薪資多? 
 ```{r female}
-#這是R Code Chunk
+girl_higher104<-filter(salary104,salary104$`大學-女/男`>100)
+girl_higher107<-filter(salary107,salary107$`大學-女/男`>100)
+knitr::kable(girl_higher104)
+knitr::kable(girl_higher107)
+girl_higher104_difference<-girl_higher104[order(girl_higher104$`大學-女/男`,decreasing = T),]
+girl_higher107_difference<-girl_higher107[order(girl_higher107$`大學-女/男`,decreasing = T),]
+girl_higher104_difference_top10<-head(girl_higher104_difference,10)
+girl_higher107_difference_top10<-head(girl_higher107_difference,10)
+knitr::kable(girl_higher104_difference_top10)
+knitr::kable(girl_higher107_difference_top10)
 ```
+
+統計發現，幾乎沒有哪一個職業的薪資是女性高於男性，在依然有男主外女主內觀念的台灣來說，性別歧視是根深蒂固的，認為女性需要承擔較多家務和照顧責任，在無法兼顧工作時傾向於中斷就業。利用男性要養家、女性結婚或有小孩後為了照顧家庭會影響生產力等的說法，或基於個人性別偏好，提高男性或壓低女性的薪資。
 
 ## 研究所薪資差異
 
 以107年度的資料來看，哪個職業別念研究所最划算呢 (研究所學歷薪資與大學學歷薪資增加比例最多)?
  
 ```{r grad}
-#這是R Code Chunk
+salary107$`研究所-薪資`<-gsub("—|…","",salary107$`研究所-薪資`)
+salary107$`研究所-薪資`<-as.numeric(salary107$`研究所-薪資`)
+salary107$`大學-薪資`<-gsub("—|…","",salary107$`大學-薪資`)
+salary107$`大學-薪資`<-as.numeric(salary107$`大學-薪資`)
+salary107$`研究所-薪資/大學-薪資`<-salary107$`研究所-薪資`/salary107$`大學-薪資`
+gra_salary_higher107<-filter(salary107,`研究所-薪資/大學-薪資`>1)
+knitr::kable(gra_salary_higher107)
+gra_salary_higher107_top10<-head(gra_salary_higher107[order(gra_salary_higher107$`研究所-薪資/大學-薪資`,decreasing = T),],10)
+knitr::kable(gra_salary_higher107_top10)
 ```
+
+統計完前十名，會發現前十名多屬於需專業技術之職業，對於靠製造業為主的台灣來說，高階工程人才是必須的，再加上好的專業技術人員人才濟濟，每年都有近五成的空缺是工程師，導致只要讀了研究所，基本薪資就會提升至少一萬初，相比於文史哲和藝術相關產業，主要注重為作品及實質成效和經驗，市場空缺又少，導致起薪十分低。不過，最主要的原因還是市場的需求，台灣因科技產業的相對發達，有專業性質的工程師、製造類，皆都會因讀了研究所而起薪有較大的落差。
 
 ## 我有興趣的職業別薪資狀況分析
 
 ### 有興趣的職業別篩選，呈現薪資
 ```{r like}
-#這是R Code Chunk
+like<-salary107[grep("藝術_娛樂及休閒服務業-專業人員|教育業-專業人員|專業_科學及技術服務業-專業人員|出版、影音製作、傳播及資通訊服務業-專業人員|工業-專業人員",salary107$大職業別),]
+selectlike<-
+  select(like,大職業別,`大學-薪資`,`研究所-薪資`)
+knitr::kable(selectlike)
 ```
+
+其實大部分和我想像的薪資差不多，工程科學類薪資較高。教育業-專業人員和藝術_娛樂及休閒服務業-專業人員的研究所薪資與大學薪資，相較於其他三個實在是少很多。
 
 ### 這些職業別研究所薪資與大學薪資差多少呢？
 ```{r likeGrad}
-#這是R Code Chunk
+selectlike$"研究所薪資與大學薪資差"<-selectlike$`研究所-薪資`-selectlike$`大學-薪資`
+knitr::kable(selectlike)
 ```
+
+如果我在大學真的找到對這個方向的熱愛，我不會因為這樣而改變心意，不過幸好目前有興趣且正在就讀的科系剛好薪資較高，金錢和興趣能同時兼顧。
 
